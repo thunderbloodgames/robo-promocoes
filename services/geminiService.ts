@@ -1,4 +1,4 @@
-import GoogleGenerativeAI from '@google/genai'; // A MUDANÇA ESTÁ AQUI: REMOVEMOS AS CHAVES {}
+import * as Google from '@google/genai';
 
 // Gera o texto do post usando a IA do Google
 export async function generatePostContent(prompt: string): Promise<string> {
@@ -6,7 +6,9 @@ export async function generatePostContent(prompt: string): Promise<string> {
     if (!apiKey) {
         throw new Error("API Key do Google Gemini não encontrada.");
     }
-    const genAI = new GoogleGenerativeAI(apiKey);
+
+    // Acessamos a ferramenta GoogleGenerativeAI de dentro da "caixa de ferramentas" Google
+    const genAI = new Google.GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const result = await model.generateContent(prompt);
