@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/genai';
+import GoogleGenerativeAI from '@google/genai'; // A MUDANÇA ESTÁ AQUI: REMOVEMOS AS CHAVES {}
 
 // Gera o texto do post usando a IA do Google
 export async function generatePostContent(prompt: string): Promise<string> {
