@@ -1,4 +1,5 @@
-import * as Google from '@google/genai';
+// Usando 'require' para a importação, que é mais robusto para certos tipos de módulos.
+const { GoogleGenerativeAI } = require('@google/genai');
 
 // Gera o texto do post usando a IA do Google
 export async function generatePostContent(prompt: string): Promise<string> {
@@ -6,9 +7,9 @@ export async function generatePostContent(prompt: string): Promise<string> {
     if (!apiKey) {
         throw new Error("API Key do Google Gemini não encontrada.");
     }
-
-    // Acessamos a ferramenta GoogleGenerativeAI de dentro da "caixa de ferramentas" Google
-    const genAI = new Google.GoogleGenerativeAI(apiKey);
+    
+    // O resto do código funciona da mesma forma
+    const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const result = await model.generateContent(prompt);
