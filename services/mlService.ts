@@ -50,7 +50,7 @@ async function getMercadoLivreToken(): Promise<string | null> {
     return newTokenData.access_token;
 }
 
-// --- Função Principal de Busca (ALTERADA PARA O TESTE) ---
+// --- Função Principal de Busca (ALTERADA PARA REGISTRAR O ERRO DETALHADO) ---
 export async function encontrarOfertaMercadoLivre(urlsJaPostadas: string[]): Promise<MercadoLivreOffer | null> {
     console.log("Buscando ofertas no Mercado Livre... (MODO DE TESTE ATIVADO)");
     const seuAffiliateId = 'kngnewstore';
@@ -59,16 +59,18 @@ export async function encontrarOfertaMercadoLivre(urlsJaPostadas: string[]): Pro
         const accessToken = await getMercadoLivreToken();
         if (!accessToken) return null;
 
-        // --- MUDANÇA AQUI: Em vez de buscar em 'deals', buscamos por 'iPhone 15' ---
         const searchQuery = "iPhone 15";
         const searchResponse = await fetch(`https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(searchQuery)}`, {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
 
+        // --- MUDANÇA AQUI: Se a busca falhar, vamos registrar a resposta do erro ---
         if (!searchResponse.ok) {
-            console.error("ML (Teste): Erro ao buscar por produto.");
+            const errorBody = await searchResponse.text();
+            console.error(`ML (Teste): Erro ao buscar por produto. Status: ${searchResponse.status}. Resposta da API: ${errorBody}`);
             return null;
         }
+        // --- FIM DA MUDANÇA ---
 
         const searchData = await searchResponse.json();
         
@@ -77,7 +79,6 @@ export async function encontrarOfertaMercadoLivre(urlsJaPostadas: string[]): Pro
             return null;
         }
 
-        // Pega o primeiro produto da busca que ainda não foi postado
         const novoItem = searchData.results.find((item: any) => !urlsJaPostadas.includes(item.permalink));
         
         if (!novoItem) {
