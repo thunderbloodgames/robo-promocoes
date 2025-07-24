@@ -1,37 +1,32 @@
 import { kv } from '@vercel/kv';
 
-// Interfaces para organizar os dados do Mercado Livre
+// Interfaces (sem alteração)
 interface MercadoLivreOffer {
     store: 'Mercado Livre';
     title: string;
-    url: string; // Este já será nosso link de afiliado
+    url: string;
     imageUrl: string;
     price: string;
     originalPrice?: string;
 }
-
 interface MeliToken {
     access_token: string;
     expires_in: number;
     created_at: number;
 }
 
-// Função para obter o Token de Acesso (gerencia a autenticação)
+// Função de Token (sem alteração)
 async function getMercadoLivreToken(): Promise<string | null> {
     const appId = process.env.MERCADO_LIVRE_APP_ID;
     const clientSecret = process.env.MERCADO_LIVRE_CLIENT_SECRET;
-
     if (!appId || !clientSecret) {
         console.error("Credenciais do Mercado Livre não configuradas.");
         return null;
     }
-
     let tokenData = await kv.get<MeliToken>('mercadolivre_token');
-
     if (tokenData && (Date.now() / 1000) < (tokenData.created_at + tokenData.expires_in - 300)) {
         return tokenData.access_token;
     }
-
     console.log("Gerando novo token de acesso do Mercado Livre...");
     const response = await fetch('https://api.mercadolibre.com/oauth/token', {
         method: 'POST',
@@ -41,12 +36,10 @@ async function getMercadoLivreToken(): Promise<string | null> {
         },
         body: `grant_type=client_credentials&client_id=${appId}&client_secret=${clientSecret}`
     });
-
     if (!response.ok) {
         console.error(`Falha ao obter token do Mercado Livre: ${await response.text()}`);
         return null;
     }
-
     const newAccessToken = await response.json();
     const newTokenData: MeliToken = {
         access_token: newAccessToken.access_token,
@@ -54,47 +47,48 @@ async function getMercadoLivreToken(): Promise<string | null> {
         created_at: Math.floor(Date.now() / 1000)
     };
     await kv.set('mercadolivre_token', newTokenData);
-    
     return newTokenData.access_token;
 }
 
-// Função principal que busca uma oferta no Mercado Livre
+// --- Função Principal de Busca (ALTERADA PARA O TESTE) ---
 export async function encontrarOfertaMercadoLivre(urlsJaPostadas: string[]): Promise<MercadoLivreOffer | null> {
-    console.log("Buscando ofertas no Mercado Livre...");
-    const seuAffiliateId = 'kngnewstore'; // Sua etiqueta de afiliado
+    console.log("Buscando ofertas no Mercado Livre... (MODO DE TESTE ATIVADO)");
+    const seuAffiliateId = 'kngnewstore';
 
     try {
         const accessToken = await getMercadoLivreToken();
         if (!accessToken) return null;
 
-        const offersResponse = await fetch('https://api.mercadolibre.com/sites/MLB/deals/search', {
+        // --- MUDANÇA AQUI: Em vez de buscar em 'deals', buscamos por 'iPhone 15' ---
+        const searchQuery = "iPhone 15";
+        const searchResponse = await fetch(`https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(searchQuery)}`, {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
 
-        if (!offersResponse.ok) {
-            console.error("ML: Erro ao buscar lista de ofertas.");
+        if (!searchResponse.ok) {
+            console.error("ML (Teste): Erro ao buscar por produto.");
             return null;
         }
 
-        const offersData = await offersResponse.json();
-        const offerIds = offersData.results.map((item: any) => item.id).join(',');
-
-        const itemsResponse = await fetch(`https://api.mercadolibre.com/items?ids=${offerIds}`, {
-            headers: { 'Authorization': `Bearer ${accessToken}` }
-        });
+        const searchData = await searchResponse.json();
         
-        const itemsData = await itemsResponse.json();
-        const novoItem = itemsData.find((item: any) => item.code === 200 && !urlsJaPostadas.includes(item.body.permalink));
+        if (!searchData.results || searchData.results.length === 0) {
+            console.log(`ML (Teste): A busca por "${searchQuery}" não retornou resultados.`);
+            return null;
+        }
+
+        // Pega o primeiro produto da busca que ainda não foi postado
+        const novoItem = searchData.results.find((item: any) => !urlsJaPostadas.includes(item.permalink));
         
         if (!novoItem) {
-            console.log("ML: Nenhuma oferta nova encontrada.");
+            console.log("ML (Teste): Todos os iPhones encontrados já foram postados.");
             return null;
         }
 
-        const produto = novoItem.body;
+        const produto = novoItem;
         const linkAfiliado = `${produto.permalink}?mpreid=${seuAffiliateId}`;
         
-        console.log(`ML: Oferta encontrada - ${produto.title}`);
+        console.log(`ML (Teste): Produto encontrado - ${produto.title}`);
         return {
             store: 'Mercado Livre',
             title: produto.title,
@@ -103,8 +97,9 @@ export async function encontrarOfertaMercadoLivre(urlsJaPostadas: string[]): Pro
             price: `R$ ${produto.price.toFixed(2).replace('.', ',')}`,
             originalPrice: produto.original_price ? `R$ ${produto.original_price.toFixed(2).replace('.', ',')}` : undefined
         };
+
     } catch (error) {
-        console.error("Falha ao buscar ofertas do Mercado Livre:", error);
+        console.error("Falha ao buscar ofertas (Modo Teste) do Mercado Livre:", error);
         return null;
     }
 }
